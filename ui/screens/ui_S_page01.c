@@ -14,6 +14,8 @@ lv_obj_t * scroll_view = NULL;
 // --- 新增：静态变量定义 ---
 static lv_obj_t * ui_input_stop_vol = NULL;
 static lv_obj_t * ui_input_vol_dif = NULL;
+static lv_obj_t * ui_input_vol_h_alarm = NULL;
+
 static lv_obj_t * ui_auto_checkbox = NULL;
 static lv_obj_t * ui_global_kb = NULL;
 
@@ -345,12 +347,15 @@ static void btn3_event_cb(lv_event_t *e) {
     // 获取输入框字符串
     const char * str_stop = lv_textarea_get_text(ui_input_stop_vol);
     const char * str_dif = lv_textarea_get_text(ui_input_vol_dif);
-    
+    const char * str_alarm_vol = lv_textarea_get_text(ui_input_vol_h_alarm);    
     // 转换为浮点数
     float val_stop = atof(str_stop);
     float val_dif = atof(str_dif);
+    float val_alarm_vol = atof(str_alarm_vol);
+    
 	int val_int_stop = str_to_int_3dec(str_stop);
 	int val_int_dif = str_to_int_3dec(str_dif);
+	int val_int_alarm_vol = str_to_int_3dec(str_alarm_vol);
 	
     // 正确代码（LVGL 9.0 ~ 9.5 通用）
 		bool is_auto = lv_obj_has_state(ui_auto_checkbox, LV_STATE_CHECKED);
@@ -369,22 +374,31 @@ static void btn3_event_cb(lv_event_t *e) {
         return;
     }
 
+    if(val_alarm_vol < val_stop) {
+        v_printf("Error Alarm Vol=%.3f: val_alarm_vol must be greater than val_stop\n",val_alarm_vol);
+        // 视觉反馈：边框变红
+        lv_obj_set_style_border_color(ui_input_vol_h_alarm, lv_color_hex(0xFF0000), 0);
+        return;
+    }
+
+
     // 发送数据（假设你已经创建了对应的 Queue）
     // ctrl_data_msg_t msg = {val_stop, val_dif, is_auto};
     // xQueueSend(g_ctrl_data_queue, &msg, 0);
     
-    v_printf("Data Sent: Stop=%.3f, Dif=%.3f, Auto=%d\n", val_stop, val_dif, is_auto);
-		v_printf("Data Sent: Stop=%d, Dif=%d, Auto=%d\n", val_int_stop, val_int_dif, is_auto);
+    v_printf("Data Sent: Stop=%.3f, Dif=%.3f, Alarm Vol=%.3f, Auto=%d\n", val_stop, val_dif, val_alarm_vol, is_auto);
+		v_printf("Data Sent: Stop=%d, Dif=%d, Auto=%d\n", val_int_stop, val_int_dif, val_int_alarm_vol, is_auto);
 		
 		
     lv_obj_set_style_border_color(ui_input_stop_vol, lv_color_hex(0xCCCCCC), 0);
 		lv_obj_set_style_border_color(ui_input_vol_dif, lv_color_hex(0xCCCCCC), 0);
+		lv_obj_set_style_border_color(ui_input_vol_h_alarm, lv_color_hex(0xCCCCCC), 0);
 		
 #if USE_LVGL_PC_SIMULATION
 
 #else
 		
-		STR_SEND_SETTING_DATA_t setting_msg={is_auto,0,val_int_stop,val_int_dif};
+		STR_SEND_SETTING_DATA_t setting_msg={is_auto,0,val_int_stop,val_int_dif,val_int_alarm_vol};
 		
 //		g_setting_data_queue
 		// 3. 发送到队列
@@ -671,14 +685,19 @@ lv_keyboard_set_mode(ui_global_kb, LV_KEYBOARD_MODE_NUMBER);
     lv_textarea_set_placeholder_text(ui_input_vol_dif, "Vol Dif");
     lv_textarea_set_one_line(ui_input_vol_dif, true);
     lv_obj_add_event_cb(ui_input_vol_dif, keyboard_event_cb, LV_EVENT_FOCUSED, ui_global_kb);
-		
+
+    ui_input_vol_h_alarm = lv_textarea_create(btn_container);
+    lv_obj_set_size(ui_input_vol_h_alarm, 100, 40);
+    lv_textarea_set_placeholder_text(ui_input_vol_h_alarm, "Alarm Vol");
+    lv_textarea_set_one_line(ui_input_vol_h_alarm, true);
+    lv_obj_add_event_cb(ui_input_vol_h_alarm, keyboard_event_cb, LV_EVENT_FOCUSED, ui_global_kb);		
 		
 		
     // 添加新按钮
     lv_obj_t *btn3 = lv_button_create(btn_container);
     lv_obj_set_size(btn3, 120, 40);
     lv_obj_t *btn3_label = lv_label_create(btn3);
-    lv_label_set_text(btn3_label, "Button 3");
+    lv_label_set_text(btn3_label, "Setting");
     lv_obj_center(btn3_label);
     // 添加点击事件回调
     lv_obj_add_event_cb(btn3, btn3_event_cb, LV_EVENT_CLICKED, NULL);
