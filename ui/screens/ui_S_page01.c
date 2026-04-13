@@ -57,13 +57,20 @@ lv_obj_t * ui_battery_cells[64] = {0};  // 用于存放 64 个单元格容器的
 
 void display_64_values_init(lv_obj_t *parent) {
     lv_obj_t *container = lv_obj_create(parent);
-    lv_obj_set_size(container, lv_pct(100), lv_pct(100));
+    lv_obj_set_size(container, lv_pct(100), lv_pct(80));
     lv_obj_set_flex_flow(container, LV_FLEX_FLOW_ROW_WRAP);
-    lv_obj_set_style_pad_all(container, 5, 0);
-	
+    // lv_obj_set_style_pad_all(container, 5, 0);
+	lv_obj_set_style_pad_all(container, 5, LV_PART_MAIN);
+    lv_obj_set_style_border_width(container, 3, LV_PART_MAIN);
+    //设置边框颜色为绿色
+    lv_obj_set_style_border_color(container, lv_color_hex(0x00FF00), LV_PART_MAIN | LV_STATE_DEFAULT);
+    //设置外边距大小5px   
+     lv_obj_set_style_margin_all(container, 1, LV_PART_MAIN);
+     
+    
 //	lv_obj_set_style_bg_color(container, lv_color_hex(0x000CCC), LV_PART_MAIN | LV_STATE_DEFAULT);
 //  lv_obj_set_style_bg_opa(container, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    for (int i = 0; i < 64; i++) {
+    for (int i = 0; i < lvgl_BATNUM; i++) {
         // 1. 创建单元格
         lv_obj_t *cell = lv_obj_create(container);
         ui_battery_cells[i] = cell;
@@ -124,7 +131,7 @@ void ui_S_page01_update_values(uint16_t values[64], uint64_t color_flags) {
     uint16_t min_val = 0xFFFF;
 
     // 1. 第一遍遍历：更新所有 64 个 Label 的文字和背景色
-    for (int i = 0; i < 64; i++) {
+    for (int i = 0; i < lvgl_BATNUM; i++) {
         if (ui_battery_labels[i] == NULL || ui_battery_cells[i] == NULL) continue;
 
         // 更新电压文字（所有 64 路均显示）
@@ -538,6 +545,8 @@ void ui_S_page01_screen_init(void) {
     lv_obj_remove_flag(ui_S_page01_screen, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
     // 清除默认边距
     lv_obj_set_style_pad_all(ui_S_page01_screen, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_width(ui_S_page01_screen, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+  
 
 
 
@@ -556,7 +565,7 @@ void ui_S_page01_screen_init(void) {
     // lv_label_set_text(btn0_label, "start1");
     // lv_obj_center(btn0_label);
     // lv_obj_set_pos(btn0, 0, 0);
- lv_obj_remove_style_all(ui_S_page01_screen);
+//  lv_obj_remove_style_all(ui_S_page01_screen);
  lv_obj_remove_flag(ui_S_page01_screen, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);      /// Flags
     // 设置为弹性布局的容器
     lv_obj_set_layout(ui_S_page01_screen, LV_LAYOUT_FLEX);
@@ -568,10 +577,11 @@ lv_obj_set_flex_align(ui_S_page01_screen,
     LV_FLEX_ALIGN_START,   // 垂直方向：靠上
     LV_FLEX_ALIGN_START
 );
-    // 1. 修改整体的内边距
-    lv_obj_set_style_pad_all(ui_S_page01_screen, 0, LV_PART_MAIN);
-    lv_obj_set_style_pad_row(ui_S_page01_screen, 0, LV_PART_MAIN);
-    lv_obj_set_style_pad_column(ui_S_page01_screen, 0, LV_PART_MAIN);
+
+
+    
+    // lv_obj_set_style_pad_row(ui_S_page01_screen, 0, LV_PART_MAIN);
+    // lv_obj_set_style_pad_column(ui_S_page01_screen, 0, LV_PART_MAIN);
     // 设置屏幕大小为整个显示区域
     lv_display_t *disp = lv_display_get_default();
     if(disp) {
@@ -584,16 +594,27 @@ lv_obj_set_flex_align(ui_S_page01_screen,
     scroll_view = lv_obj_create(ui_S_page01_screen);
     // 清除 边框、轮廓、外框、边界线
 lv_obj_remove_style_all(scroll_view); // 清空所有样式（最保险）
-lv_obj_set_style_border_width(scroll_view, 0, LV_PART_MAIN);   // 边框宽度=0
-lv_obj_set_style_outline_width(scroll_view, 0, LV_PART_MAIN);  // 外轮廓宽度=0
-lv_obj_set_style_pad_all(scroll_view, 0, LV_PART_MAIN);        // 内边距=0
+lv_obj_set_style_border_width(scroll_view, 2, LV_PART_MAIN);   // 边框宽度=0
+//设置外边框颜色为紫色
+lv_obj_set_style_outline_color(scroll_view, lv_color_hex(0x8B0000), LV_PART_MAIN);
+
+lv_obj_set_style_outline_width(scroll_view, 3, LV_PART_MAIN);  // 外轮廓宽度=0    
+//设置外边框轮廓颜色为红色
+lv_obj_set_style_outline_color(scroll_view, lv_color_hex(0xFF0000), LV_PART_MAIN);
+
+lv_obj_set_style_pad_all(scroll_view, 0, 0);        // 内边距=0
+
+lv_obj_set_style_radius(scroll_view, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+
 lv_obj_set_pos(scroll_view, 0, 0);
     lv_obj_set_size(scroll_view, lv_pct(100), lv_pct(80));
-    lv_obj_align(scroll_view, LV_ALIGN_CENTER, 0, 0);
-    lv_obj_set_style_pad_all(scroll_view, 10, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_align(scroll_view, LV_ALIGN_TOP_MID, 0, 0);
+
     lv_obj_set_style_bg_color(scroll_view, lv_color_hex(0xCCCCCC), LV_PART_MAIN | LV_STATE_DEFAULT);
 		// 开启背景显示（必须加）
 lv_obj_set_style_bg_opa(scroll_view, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+lv_obj_set_flex_flow(scroll_view, LV_FLEX_FLOW_COLUMN);  // 垂直排列（关键）
+
     // 示例数据：创建64个uint16数值
     uint16_t test_values[64];
     for (int i = 0; i < 64; i++) {
@@ -609,7 +630,187 @@ lv_obj_set_style_bg_opa(scroll_view, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 //    // 调用显示电池电压的函数，只显示前16个电池
 //    display_64_values(scroll_view, test_values, test_color_flags, 64);
     display_64_values_init(scroll_view); 
-    // 在滚动视图下方添加控件
+
+    lv_obj_t *mid_container = lv_obj_create(scroll_view);
+    lv_obj_set_width(mid_container, lv_pct(100));         // 宽度铺满
+    lv_obj_set_flex_grow(mid_container, 1);               // 🔥 自动填充剩余空间
+    // lv_obj_set_size(mid_container, lv_pct(100), lv_pct(14));
+    // lv_obj_align(mid_container, LV_ALIGN_BOTTOM_MID, 0, 0);
+    lv_obj_set_style_pad_all(mid_container, 10, LV_PART_MAIN | LV_STATE_DEFAULT);
+    // lv_obj_set_style_bg_color(mid_container, lv_color_hex(0x8B0000), LV_PART_MAIN | LV_STATE_DEFAULT);
+    // lv_obj_set_style_bg_opa(mid_container, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    //设置边框大小2px
+    lv_obj_set_style_border_width(mid_container, 2, LV_PART_MAIN);   // 边框宽度=0
+    //设置边框颜色为紫色
+    lv_obj_set_style_border_color(mid_container, lv_color_hex(0x8B0000), LV_PART_MAIN);
+    //设置边框角度为直角
+    lv_obj_set_style_radius(mid_container, 0, LV_PART_MAIN);
+
+     lv_obj_remove_flag(mid_container, LV_OBJ_FLAG_SCROLLABLE);
+   // 设置横向弹性布局
+    
+lv_obj_set_flex_flow(mid_container, LV_FLEX_FLOW_ROW);
+    
+lv_obj_set_flex_align(mid_container, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_SPACE_EVENLY);
+
+// 创建截止电压显示控件
+    
+lv_obj_t *err_bat = lv_obj_create(mid_container);
+    
+lv_obj_set_size(err_bat, 100, 80);
+//设置边框大小为1px，红色   
+lv_obj_set_style_border_width(err_bat, 1, LV_PART_MAIN);   // 边框宽度=0
+//设置边框颜色为红色
+lv_obj_set_style_border_color(err_bat, lv_color_hex(0xFF0000), LV_PART_MAIN);
+
+lv_obj_remove_flag(err_bat, LV_OBJ_FLAG_SCROLLABLE); 
+
+lv_obj_set_flex_flow(err_bat, LV_FLEX_FLOW_COLUMN);
+    
+lv_obj_set_flex_align(err_bat, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+        
+lv_obj_t *cutoff_voltage_label = lv_label_create(err_bat);
+    
+lv_label_set_text(cutoff_voltage_label, "Err Battery");
+    
+lv_obj_set_style_text_font(cutoff_voltage_label, &lv_font_montserrat_12, 0);
+        
+lv_obj_t *err_bat_value = lv_label_create(err_bat);
+    
+lv_label_set_text(err_bat_value, "no error");
+    
+lv_obj_set_style_text_font(err_bat_value, &lv_font_montserrat_12, 0);
+    
+lv_obj_set_style_text_color(err_bat_value, lv_color_hex(0xFF0000), 0);
+        
+// 创建压差显示控件
+    
+lv_obj_t *up_value_container = lv_obj_create(mid_container);
+ lv_obj_set_size(up_value_container, 100, 80);
+//设置边框大小为1px，红色   
+lv_obj_set_style_border_width(up_value_container, 1, LV_PART_MAIN);   // 边框宽度=0
+//设置边框颜色为红色
+lv_obj_set_style_border_color(up_value_container, lv_color_hex(0x00ff00), LV_PART_MAIN);
+lv_obj_set_flex_flow(up_value_container, LV_FLEX_FLOW_COLUMN);
+// lv_obj_set_flex_flow(up_value_container,  LV_FLEX_FLOW_COLUMN_WRAP);    
+lv_obj_set_flex_align(up_value_container, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+
+// 然后通过设置 row_gap (行间距) 为 0 来消除空隙
+lv_obj_set_style_pad_row(up_value_container, 0, LV_PART_MAIN);
+lv_obj_set_style_pad_all(up_value_container, 0, LV_PART_MAIN);
+lv_obj_set_flex_grow(up_value_container, 3);
+
+lv_obj_set_style_radius(up_value_container, 50, LV_PART_MAIN);
+lv_obj_remove_flag(up_value_container, LV_OBJ_FLAG_SCROLLABLE);
+//  
+
+// lv_obj_remove_flag(up_value_container, LV_OBJ_FLAG_SCROLLABLE); 
+
+// lv_obj_t *up_value = lv_obj_create(up_value_container);
+
+// lv_obj_set_size(up_value, 100, 30);
+
+//    lv_obj_remove_flag(up_value, LV_OBJ_FLAG_SCROLLABLE);  
+// lv_obj_set_flex_flow(up_value, LV_FLEX_FLOW_COLUMN);
+    
+// lv_obj_set_flex_align(up_value, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+        
+lv_obj_t *up_value_label = lv_label_create(up_value_container);
+//移除内边距    
+lv_obj_set_style_pad_all(up_value_label, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+//设置上边距为10px
+lv_obj_set_style_pad_top(up_value_label, 15, LV_PART_MAIN);
+
+//去掉下拉列表
+// lv_obj_set_flex_grow(up_value_label, 1);
+lv_obj_set_height(up_value_label, lv_pct(53)); 
+// lv_obj_set_align(up_value_label, LV_ALIGN_TOP_MID);
+    //设置边框大小为1px，红色   
+lv_obj_set_style_border_width(up_value_label, 1, LV_PART_MAIN);   // 边框宽度=0
+//设置边框颜色为红色
+lv_obj_set_style_border_color(up_value_label, lv_color_hex(0xFF00FF), LV_PART_MAIN);
+
+lv_label_set_text(up_value_label, "up value");
+    
+lv_obj_set_style_text_font(up_value_label, &lv_font_montserrat_12, 0);
+        
+// 使up_value_label在容器内向下偏移10px
+//  lv_obj_align(up_value_label, LV_ALIGN_TOP_MID, 0, 20);
+
+
+lv_obj_t *up_value_value_container = lv_obj_create(up_value_container);
+// lv_obj_set_flex_grow(up_value_value_container, 1);
+lv_obj_set_height(up_value_value_container, lv_pct(47)); 
+lv_obj_set_align(up_value_value_container, LV_ALIGN_BOTTOM_MID); 
+
+lv_obj_set_width(up_value_value_container, lv_pct(80));
+//  lv_obj_set_size(up_value_value_container, 100, 40);
+    //设置边框大小为1px，红色   
+lv_obj_set_style_border_width(up_value_value_container, 1, LV_PART_MAIN);   // 边框宽度=0
+//设置边框颜色为红色
+lv_obj_set_style_border_color(up_value_value_container, lv_color_hex(0x00ff00), LV_PART_MAIN);
+lv_obj_set_style_pad_all(up_value_value_container, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+    
+lv_obj_set_flex_flow(up_value_value_container, LV_FLEX_FLOW_ROW);
+    
+lv_obj_set_flex_align(up_value_value_container, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_SPACE_EVENLY);
+// lv_obj_set_flex_grow(up_value_value_container, 3); 
+
+lv_obj_t *up_value_num = lv_label_create(up_value_value_container);
+
+lv_obj_set_style_text_font(up_value_num, &lv_font_montserrat_14, 0);
+        
+lv_obj_set_style_text_color(up_value_num, lv_color_hex(0xFF0000), 0);
+
+lv_label_set_text(up_value_num, "(0)");   
+
+lv_obj_t *up_value_dos = lv_label_create(up_value_value_container);
+
+lv_obj_set_style_text_font(up_value_dos, &lv_font_montserrat_14, 0);
+    
+lv_obj_set_style_text_color(up_value_dos, lv_color_hex(0xFF0000), 0);
+
+lv_label_set_text(up_value_dos, " : ");   
+
+lv_obj_t *up_value_value = lv_label_create(up_value_value_container);
+
+lv_label_set_text(up_value_value, "0.1V");
+    
+lv_obj_set_style_text_font(up_value_value, &lv_font_montserrat_14, 0);
+    
+lv_obj_set_style_text_color(up_value_value, lv_color_hex(0xFF0000), 0);
+        
+// 创建报警电压显示控件
+    
+lv_obj_t *alarm_voltage_cont = lv_obj_create(mid_container);
+    
+lv_obj_set_size(alarm_voltage_cont, 120, 80);
+    
+lv_obj_set_flex_flow(alarm_voltage_cont, LV_FLEX_FLOW_COLUMN);
+    
+lv_obj_set_flex_align(alarm_voltage_cont, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+        lv_obj_set_flex_grow(alarm_voltage_cont, 3);
+lv_obj_t *alarm_voltage_label = lv_label_create(alarm_voltage_cont);
+    
+lv_label_set_text(alarm_voltage_label, "Alarm Voltage");
+    
+lv_obj_set_style_text_font(alarm_voltage_label, &lv_font_montserrat_12, 0);
+        
+lv_obj_t *alarm_voltage_value = lv_label_create(alarm_voltage_cont);
+    
+lv_label_set_text(alarm_voltage_value, "2.7V");
+    
+lv_obj_set_style_text_font(alarm_voltage_value, &lv_font_montserrat_14, 0);
+    
+lv_obj_set_style_text_color(alarm_voltage_value, lv_color_hex(0xFF0000), 0);
+        
+// 为所有子容器设置背景颜色
+    
+
+
+
+
+
     lv_obj_t *btn_container = lv_obj_create(ui_S_page01_screen);
     lv_obj_set_size(btn_container, lv_pct(100), lv_pct(20));
     lv_obj_align(btn_container, LV_ALIGN_BOTTOM_MID, 0, 0);
