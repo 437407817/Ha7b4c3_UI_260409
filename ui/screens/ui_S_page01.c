@@ -20,8 +20,16 @@ static lv_obj_t * ui_auto_checkbox = NULL;
 static lv_obj_t * ui_global_kb = NULL;
 
 
+lv_obj_t *err_bat_value = NULL;
 
 
+
+lv_obj_t *highest_voltage_value = NULL;
+lv_obj_t *lowest_voltage_value = NULL;
+lv_obj_t *lowest_voltage_num = NULL;
+lv_obj_t *highest_voltage_num = NULL;
+lv_obj_t *diff_voltage_value = NULL;
+lv_obj_t *avg_voltage_value = NULL;
 
 
 // ui_S_page01.c 顶部
@@ -129,7 +137,11 @@ void ui_S_page01_update_values(uint16_t values[64], uint64_t color_flags) {
     int min_idx = -1;
     uint16_t max_val = 0;
     uint16_t min_val = 0xFFFF;
+    uint16_t diff_val = 0;
+    uint32_t sum_val = 0;
+    uint16_t avg_val = 0;
 
+char buffer[20];
     // 1. 第一遍遍历：更新所有 64 个 Label 的文字和背景色
     for (int i = 0; i < lvgl_BATNUM; i++) {
         if (ui_battery_labels[i] == NULL || ui_battery_cells[i] == NULL) continue;
@@ -162,22 +174,89 @@ void ui_S_page01_update_values(uint16_t values[64], uint64_t color_flags) {
                 min_idx = i;
             }
         }
+            sum_val += values[i];
     }
 
     // 2. 第二步：高亮前 52 路中的最值边框
     if (max_idx != -1) {
         lv_obj_set_style_border_width(ui_battery_cells[max_idx], 2, 0);
         lv_obj_set_style_border_color(ui_battery_cells[max_idx], lv_color_hex(0xFF0000), 0); // 红色最高
-				lv_obj_set_style_text_color(ui_battery_labels[max_idx], lv_color_hex(0xFF0000), 0);
+		lv_obj_set_style_text_color(ui_battery_labels[max_idx], lv_color_hex(0xFF0000), 0);
+snprintf(buffer, sizeof(buffer), "%.3fV", (float)max_val / 1000.0);
+lv_label_set_text(highest_voltage_value, buffer);
+snprintf(buffer, sizeof(buffer), "(%d)", max_idx);
+lv_label_set_text(highest_voltage_num, buffer); 
+
     }
     if (min_idx != -1 && min_idx != max_idx) {
         lv_obj_set_style_border_width(ui_battery_cells[min_idx], 2, 0);
         lv_obj_set_style_border_color(ui_battery_cells[min_idx], lv_color_hex(0xFFD700) , 0); // 黄色最低
-			lv_obj_set_style_text_color(ui_battery_labels[min_idx], lv_color_hex(0xFFD700), 0);
+		lv_obj_set_style_text_color(ui_battery_labels[min_idx], lv_color_hex(0xFFD700), 0);
+        
+snprintf(buffer, sizeof(buffer), "%.3fV", (float)min_val / 1000.0);
+lv_label_set_text(lowest_voltage_value, buffer);
+snprintf(buffer, sizeof(buffer), "(%d)", min_idx);
+lv_label_set_text(lowest_voltage_num, buffer);   
     }
+
+    diff_val = max_val - min_val;
+    snprintf(buffer, sizeof(buffer), "%.3fV", (float)diff_val / 1000.0);
+    lv_label_set_text(diff_voltage_value, buffer);
+
+    avg_val = sum_val / lvgl_BATNUM;
+        snprintf(buffer, sizeof(buffer), "%.3fV", (float)avg_val / 1000.0);
+        lv_label_set_text(avg_voltage_value, buffer);
+
+
+
 }
 
 
+void ui_S_page01_update_error_values( uint8_t error_flags){
+    // 取error_flags的低6位
+    uint8_t error_value = error_flags & 0x3F;
+    
+    if (error_value > 0) {
+        // 数值大于0，设置为"bat %error_flags error"
+        char buffer[20];
+        snprintf(buffer, sizeof(buffer), "bat %d error", error_value);
+        lv_label_set_text(err_bat_value, buffer);
+        //设置文本颜色为红色
+        lv_obj_set_style_text_color(err_bat_value, lv_color_hex(0xFF0000), 0);
+    } else {
+        // 数值为0，设置为"no error"
+        lv_label_set_text(err_bat_value, "no error");
+        //设置文本颜色为绿色
+        lv_obj_set_style_text_color(err_bat_value, lv_color_hex(0x00FF00), 0);
+    }
+}
+
+void ui_S_page01_update_initial_setting_values(
+    uint8_t auto_flag,uint16_t stop_vol,uint16_t dif_vol,uint16_t alarm_vol){
+        // 根据auto_flag设置ui_auto_checkbox的选中状态
+        if (auto_flag != 0) {
+            lv_obj_add_state(ui_auto_checkbox, LV_STATE_CHECKED);
+            // lv_checkbox_set_text(ui_auto_checkbox, "ON");
+        } else {
+            lv_obj_clear_state(ui_auto_checkbox, LV_STATE_CHECKED);
+            // lv_checkbox_set_text(ui_auto_checkbox, "OFF");
+        }
+char buffer[20];
+if (ui_input_stop_vol) {
+    snprintf(buffer, sizeof(buffer), "%.3f", (float)stop_vol / 1000.0);
+    lv_textarea_set_text(ui_input_stop_vol, buffer);
+    
+}
+if (ui_input_vol_dif) {
+    snprintf(buffer, sizeof(buffer), "%.3f", (float)dif_vol / 1000.0);
+    lv_textarea_set_text(ui_input_vol_dif, buffer);
+}
+if (ui_input_vol_h_alarm) {
+    snprintf(buffer, sizeof(buffer), "%.3f", (float)alarm_vol / 1000.0);
+    lv_textarea_set_text(ui_input_vol_h_alarm, buffer);
+}
+
+    }
 
 
 
@@ -435,111 +514,6 @@ static void switch_page_event_cb(lv_event_t *e) {
 
 
 
-#if 0
-
-// 显示电池电压的函数
-void display_64_values(lv_obj_t *parent, uint16_t values[64], uint64_t color_flags, int count) {
-    // 网格布局参数
-    const int grid_size = 8; // 8x8网格
-    const int cell_size = 60; // 每个单元格大小
-    const int padding = 5; // 单元格间距
-    const int max_value = 5000; // 最大值
-    
-    // 创建容器用于放置所有数值控件
-    lv_obj_t *container = lv_obj_create(parent);
-    // lv_obj_set_size(container, grid_size * (cell_size + padding) - padding, 
-    //                grid_size * (cell_size + padding) - padding);
-    lv_obj_set_size(container, lv_pct(100), lv_pct(100));
-    lv_obj_align(container, LV_ALIGN_CENTER, 0, 0);
-    lv_obj_set_flex_flow(container, LV_FLEX_FLOW_ROW_WRAP);
-    lv_obj_set_flex_align(container, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER);
-    
-    // 确保count不超过64
-    if (count > 64) count = 64;
-    if (count < 1) count = 1;
-    
-    // 存储电池控件和电压值
-    lv_obj_t *cells[64] = {0};
-    int voltages[64] = {0};
-    
-    // 创建电池控件
-    for (int i = 0; i < count; i++) {
-        // 创建单个数值控件的容器
-        lv_obj_t *cell = lv_obj_create(container);
-        cells[i] = cell;
-        lv_obj_set_size(cell, cell_size+10, cell_size);
-        lv_obj_set_style_border_width(cell, 1, LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_border_color(cell, lv_color_hex(0xCCCCCC), LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_border_opa(cell, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_pad_all(cell, 5, LV_PART_MAIN | LV_STATE_DEFAULT);
-        
-        // 计算电压值
-        int voltage = values[i];
-        voltages[i] = voltage;
-        
-        // 检查颜色标志位（0-63位对应64个控件）
-        uint64_t bit_mask = (uint64_t)1 << i;
-        
-        // 设置背景颜色
-        if (color_flags & bit_mask) {
-            // 蓝色
-            lv_obj_set_style_bg_color(cell, lv_color_hex(0x0000FF), LV_PART_MAIN | LV_STATE_DEFAULT);
-            lv_obj_set_style_text_color(cell, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-        } else {
-            // 白色
-            lv_obj_set_style_bg_color(cell, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-            lv_obj_set_style_text_color(cell, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-        }
-        
-        // 添加标号（1-64）
-        lv_obj_t *index_label = lv_label_create(cell);
-        lv_label_set_text_fmt(index_label, "%d", i + 1); // 从1开始编号
-        lv_obj_align(index_label, LV_ALIGN_TOP_LEFT, 2, 2);
-        lv_obj_set_style_text_font(index_label, &lv_font_montserrat_12, LV_PART_MAIN | LV_STATE_DEFAULT);
-        
-        // 创建标签显示数值，转换为电压格式（除以1000，显示为X.XXXV）
-        lv_obj_t *label = lv_label_create(cell);
-         //lv_label_set_text_fmt(label, "%.3fV", voltage);
-        lv_label_set_text_fmt(label, "%d.%03dV", voltages[i] / 1000, voltages[i] % 1000);
-        lv_obj_align(label, LV_ALIGN_CENTER, 0, 0);
-        lv_obj_set_style_text_font(label, &lv_font_montserrat_14, LV_PART_MAIN | LV_STATE_DEFAULT);
-    }
-    
-    // 找出最高和最低电压
-    if (count > 0) {
-        int max_idx = 0;
-        int min_idx = 0;
-        
-        for (int i = 1; i < count; i++) {
-            if (voltages[i] > voltages[max_idx]) {
-                max_idx = i;
-            }
-            if (voltages[i] < voltages[min_idx]) {
-                min_idx = i;
-            }
-        }
-        
-        // 设置最高电压为红色边框
-        if (cells[max_idx]) {
-            // 保持原有的背景颜色
-            // 设置边框为红色
-            lv_obj_set_style_border_width(cells[max_idx], 2, LV_PART_MAIN | LV_STATE_DEFAULT);
-            lv_obj_set_style_border_color(cells[max_idx], lv_color_hex(0xFF0000), LV_PART_MAIN | LV_STATE_DEFAULT);
-        }
-        
-        // 设置最低电压为灰色边框
-        if (cells[min_idx] && min_idx != max_idx) { // 避免最高和最低是同一个的情况
-            // 保持原有的背景颜色
-            // 设置边框为浅绿色
-            lv_obj_set_style_border_width(cells[min_idx], 2, LV_PART_MAIN | LV_STATE_DEFAULT);
-            lv_obj_set_style_border_color(cells[min_idx], lv_color_hex(0x00FF00), LV_PART_MAIN | LV_STATE_DEFAULT);
-        }
-    }
-}
-#endif
-
-
-
 void ui_S_page01_screen_init(void) {
     ui_S_page01_screen = lv_obj_create(NULL);
     lv_obj_remove_flag(ui_S_page01_screen, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
@@ -675,7 +649,7 @@ lv_label_set_text(cutoff_voltage_label, "Err Battery");
     
 lv_obj_set_style_text_font(cutoff_voltage_label, &lv_font_montserrat_12, 0);
         
-lv_obj_t *err_bat_value = lv_label_create(err_bat);
+err_bat_value = lv_label_create(err_bat);
     
 lv_label_set_text(err_bat_value, "no error");
     
@@ -685,23 +659,23 @@ lv_obj_set_style_text_color(err_bat_value, lv_color_hex(0xFF0000), 0);
         
 // 创建压差显示控件
     
-lv_obj_t *up_value_container = lv_obj_create(mid_container);
- lv_obj_set_size(up_value_container, 100, 80);
+lv_obj_t *highest_voltage_container = lv_obj_create(mid_container);
+ lv_obj_set_size(highest_voltage_container, 100, 80);
 //设置边框大小为1px，红色   
-lv_obj_set_style_border_width(up_value_container, 1, LV_PART_MAIN);   // 边框宽度=0
+lv_obj_set_style_border_width(highest_voltage_container, 1, LV_PART_MAIN);   // 边框宽度=0
 //设置边框颜色为红色
-lv_obj_set_style_border_color(up_value_container, lv_color_hex(0x00ff00), LV_PART_MAIN);
-lv_obj_set_flex_flow(up_value_container, LV_FLEX_FLOW_COLUMN);
-// lv_obj_set_flex_flow(up_value_container,  LV_FLEX_FLOW_COLUMN_WRAP);    
-lv_obj_set_flex_align(up_value_container, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+lv_obj_set_style_border_color(highest_voltage_container, lv_color_hex(0x00ff00), LV_PART_MAIN);
+lv_obj_set_flex_flow(highest_voltage_container, LV_FLEX_FLOW_COLUMN);
+// lv_obj_set_flex_flow(highest_voltage_container,  LV_FLEX_FLOW_COLUMN_WRAP);      // 横向自动换行
+lv_obj_set_flex_align(highest_voltage_container, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);     
 
 // 然后通过设置 row_gap (行间距) 为 0 来消除空隙
-lv_obj_set_style_pad_row(up_value_container, 0, LV_PART_MAIN);
-lv_obj_set_style_pad_all(up_value_container, 0, LV_PART_MAIN);
-lv_obj_set_flex_grow(up_value_container, 3);
+lv_obj_set_style_pad_row(highest_voltage_container, 0, LV_PART_MAIN);
+lv_obj_set_style_pad_all(highest_voltage_container, 0, LV_PART_MAIN);
+lv_obj_set_flex_grow(highest_voltage_container, 2);
 
-lv_obj_set_style_radius(up_value_container, 50, LV_PART_MAIN);
-lv_obj_remove_flag(up_value_container, LV_OBJ_FLAG_SCROLLABLE);
+lv_obj_set_style_radius(highest_voltage_container, 50, LV_PART_MAIN);
+lv_obj_remove_flag(highest_voltage_container, LV_OBJ_FLAG_SCROLLABLE);
 //  
 
 // lv_obj_remove_flag(up_value_container, LV_OBJ_FLAG_SCROLLABLE); 
@@ -715,98 +689,227 @@ lv_obj_remove_flag(up_value_container, LV_OBJ_FLAG_SCROLLABLE);
     
 // lv_obj_set_flex_align(up_value, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
         
-lv_obj_t *up_value_label = lv_label_create(up_value_container);
+lv_obj_t *highest_voltage_label = lv_label_create(highest_voltage_container);
 //移除内边距    
-lv_obj_set_style_pad_all(up_value_label, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+lv_obj_set_style_pad_all(highest_voltage_label, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
 //设置上边距为10px
-lv_obj_set_style_pad_top(up_value_label, 15, LV_PART_MAIN);
+lv_obj_set_style_pad_top(highest_voltage_label, 15, LV_PART_MAIN);
 
 //去掉下拉列表
-// lv_obj_set_flex_grow(up_value_label, 1);
-lv_obj_set_height(up_value_label, lv_pct(53)); 
-// lv_obj_set_align(up_value_label, LV_ALIGN_TOP_MID);
+// lv_obj_set_flex_grow(highest_voltage_label, 1);
+lv_obj_set_height(highest_voltage_label, lv_pct(53)); 
+// lv_obj_set_align(highest_voltage_label, LV_ALIGN_TOP_MID);
     //设置边框大小为1px，红色   
-lv_obj_set_style_border_width(up_value_label, 1, LV_PART_MAIN);   // 边框宽度=0
+lv_obj_set_style_border_width(highest_voltage_label, 1, LV_PART_MAIN);   // 边框宽度=0
 //设置边框颜色为红色
-lv_obj_set_style_border_color(up_value_label, lv_color_hex(0xFF00FF), LV_PART_MAIN);
+lv_obj_set_style_border_color(highest_voltage_label, lv_color_hex(0xFF00FF), LV_PART_MAIN);
 
-lv_label_set_text(up_value_label, "up value");
+lv_label_set_text(highest_voltage_label, "highest voltage");
     
-lv_obj_set_style_text_font(up_value_label, &lv_font_montserrat_12, 0);
+lv_obj_set_style_text_font(highest_voltage_label, &lv_font_montserrat_12, 0);
         
 // 使up_value_label在容器内向下偏移10px
 //  lv_obj_align(up_value_label, LV_ALIGN_TOP_MID, 0, 20);
 
 
-lv_obj_t *up_value_value_container = lv_obj_create(up_value_container);
-// lv_obj_set_flex_grow(up_value_value_container, 1);
-lv_obj_set_height(up_value_value_container, lv_pct(47)); 
-lv_obj_set_align(up_value_value_container, LV_ALIGN_BOTTOM_MID); 
+lv_obj_t *highest_voltage_value_container = lv_obj_create(highest_voltage_container);
+// lv_obj_set_flex_grow(highest_voltage_value_container, 1);
+lv_obj_set_height(highest_voltage_value_container, lv_pct(47)); 
+lv_obj_set_align(highest_voltage_value_container, LV_ALIGN_BOTTOM_MID); 
 
-lv_obj_set_width(up_value_value_container, lv_pct(80));
-//  lv_obj_set_size(up_value_value_container, 100, 40);
+lv_obj_set_width(highest_voltage_value_container, lv_pct(80));
+//  lv_obj_set_size(highest_voltage_value_container, 100, 40);
     //设置边框大小为1px，红色   
-lv_obj_set_style_border_width(up_value_value_container, 1, LV_PART_MAIN);   // 边框宽度=0
+lv_obj_set_style_border_width(highest_voltage_value_container, 1, LV_PART_MAIN);   // 边框宽度=0
 //设置边框颜色为红色
-lv_obj_set_style_border_color(up_value_value_container, lv_color_hex(0x00ff00), LV_PART_MAIN);
-lv_obj_set_style_pad_all(up_value_value_container, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+lv_obj_set_style_border_color(highest_voltage_value_container, lv_color_hex(0x00ff00), LV_PART_MAIN);
+lv_obj_set_style_pad_all(highest_voltage_value_container, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     
-lv_obj_set_flex_flow(up_value_value_container, LV_FLEX_FLOW_ROW);
+lv_obj_set_flex_flow(highest_voltage_value_container, LV_FLEX_FLOW_ROW);
     
-lv_obj_set_flex_align(up_value_value_container, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_SPACE_EVENLY);
-// lv_obj_set_flex_grow(up_value_value_container, 3); 
+lv_obj_set_flex_align(highest_voltage_value_container, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_SPACE_EVENLY);
+// lv_obj_set_flex_grow(highest_voltage_value_container, 3); 
 
-lv_obj_t *up_value_num = lv_label_create(up_value_value_container);
+highest_voltage_num = lv_label_create(highest_voltage_value_container);
 
-lv_obj_set_style_text_font(up_value_num, &lv_font_montserrat_14, 0);
+lv_obj_set_style_text_font(highest_voltage_num, &lv_font_montserrat_14, 0);
         
-lv_obj_set_style_text_color(up_value_num, lv_color_hex(0xFF0000), 0);
+lv_obj_set_style_text_color(highest_voltage_num, lv_color_hex(0xFF0000), 0);
 
-lv_label_set_text(up_value_num, "(0)");   
+lv_label_set_text(highest_voltage_num, "(0)");   
 
-lv_obj_t *up_value_dos = lv_label_create(up_value_value_container);
+lv_obj_t *highest_voltage_dos = lv_label_create(highest_voltage_value_container);
 
-lv_obj_set_style_text_font(up_value_dos, &lv_font_montserrat_14, 0);
+lv_obj_set_style_text_font(highest_voltage_dos, &lv_font_montserrat_14, 0);
     
-lv_obj_set_style_text_color(up_value_dos, lv_color_hex(0xFF0000), 0);
+lv_obj_set_style_text_color(highest_voltage_dos, lv_color_hex(0xFF0000), 0);
 
-lv_label_set_text(up_value_dos, " : ");   
+lv_label_set_text(highest_voltage_dos, " : ");   
 
-lv_obj_t *up_value_value = lv_label_create(up_value_value_container);
+highest_voltage_value = lv_label_create(highest_voltage_value_container);
 
-lv_label_set_text(up_value_value, "0.1V");
+lv_label_set_text(highest_voltage_value, "0.0V");
     
-lv_obj_set_style_text_font(up_value_value, &lv_font_montserrat_14, 0);
+lv_obj_set_style_text_font(highest_voltage_value, &lv_font_montserrat_14, 0);
     
-lv_obj_set_style_text_color(up_value_value, lv_color_hex(0xFF0000), 0);
+lv_obj_set_style_text_color(highest_voltage_value, lv_color_hex(0xFF0000), 0);
         
 // 创建报警电压显示控件
-    
-lv_obj_t *alarm_voltage_cont = lv_obj_create(mid_container);
-    
-lv_obj_set_size(alarm_voltage_cont, 120, 80);
-    
-lv_obj_set_flex_flow(alarm_voltage_cont, LV_FLEX_FLOW_COLUMN);
-    
-lv_obj_set_flex_align(alarm_voltage_cont, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-        lv_obj_set_flex_grow(alarm_voltage_cont, 3);
-lv_obj_t *alarm_voltage_label = lv_label_create(alarm_voltage_cont);
-    
-lv_label_set_text(alarm_voltage_label, "Alarm Voltage");
-    
-lv_obj_set_style_text_font(alarm_voltage_label, &lv_font_montserrat_12, 0);
-        
-lv_obj_t *alarm_voltage_value = lv_label_create(alarm_voltage_cont);
-    
-lv_label_set_text(alarm_voltage_value, "2.7V");
-    
-lv_obj_set_style_text_font(alarm_voltage_value, &lv_font_montserrat_14, 0);
-    
-lv_obj_set_style_text_color(alarm_voltage_value, lv_color_hex(0xFF0000), 0);
-        
-// 为所有子容器设置背景颜色
-    
+    //------------------------------------------------------------------------------------
 
+
+
+
+    
+lv_obj_t *lowest_voltage_container = lv_obj_create(mid_container);
+ lv_obj_set_size(lowest_voltage_container, 120, 80);
+//设置边框大小为1px，红色   
+lv_obj_set_style_border_width(lowest_voltage_container, 1, LV_PART_MAIN);   // 边框宽度=0
+//设置边框颜色为红色
+lv_obj_set_style_border_color(lowest_voltage_container, lv_color_hex(0x00ff00), LV_PART_MAIN);
+lv_obj_set_flex_flow(lowest_voltage_container, LV_FLEX_FLOW_COLUMN);
+// lv_obj_set_flex_flow(lowest_voltage_container,  LV_FLEX_FLOW_COLUMN_WRAP);    
+lv_obj_set_flex_align(lowest_voltage_container, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+
+// 然后通过设置 row_gap (行间距) 为 0 来消除空隙
+lv_obj_set_style_pad_row(lowest_voltage_container, 0, LV_PART_MAIN);            
+lv_obj_set_style_pad_all(lowest_voltage_container, 0, LV_PART_MAIN);
+lv_obj_set_flex_grow(lowest_voltage_container, 2);  
+
+lv_obj_set_style_radius(lowest_voltage_container, 50, LV_PART_MAIN);
+lv_obj_remove_flag(lowest_voltage_container, LV_OBJ_FLAG_SCROLLABLE);
+//  
+
+lv_obj_t *lowest_voltage_label = lv_label_create(lowest_voltage_container);
+//移除内边距    
+lv_obj_set_style_pad_all(lowest_voltage_label, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+//设置上边距为10px
+lv_obj_set_style_pad_top(lowest_voltage_label, 15, LV_PART_MAIN);
+
+//去掉下拉列表
+// lv_obj_set_flex_grow(lowest_voltage_label, 1);       
+lv_obj_set_height(lowest_voltage_label, lv_pct(53)); 
+// lv_obj_set_align(lowest_voltage_label, LV_ALIGN_TOP_MID);
+    //设置边框大小为1px，红色   
+lv_obj_set_style_border_width(lowest_voltage_label, 1, LV_PART_MAIN);   // 边框宽度=0
+//设置边框颜色为红色
+lv_obj_set_style_border_color(lowest_voltage_label, lv_color_hex(0xFF00FF), LV_PART_MAIN);
+
+lv_label_set_text(lowest_voltage_label, "lowest voltage");
+    
+lv_obj_set_style_text_font(lowest_voltage_label, &lv_font_montserrat_12, 0);
+        
+// 使lowest_voltage_label在容器内向下偏移10px
+//  lv_obj_align(lowest_voltage_label, LV_ALIGN_TOP_MID, 0, 20);
+
+
+lv_obj_t *lowest_voltage_value_container = lv_obj_create(lowest_voltage_container);
+// lv_obj_set_flex_grow(lowest_voltage_value_container, 1);
+lv_obj_set_height(lowest_voltage_value_container, lv_pct(47)); 
+lv_obj_set_align(lowest_voltage_value_container, LV_ALIGN_BOTTOM_MID); 
+
+lv_obj_set_width(lowest_voltage_value_container, lv_pct(80));
+//  lv_obj_set_size(lowest_voltage_value_container, 100, 40);
+    //设置边框大小为1px，红色   
+lv_obj_set_style_border_width(lowest_voltage_value_container, 1, LV_PART_MAIN);   // 边框宽度=0
+//设置边框颜色为红色
+lv_obj_set_style_border_color(lowest_voltage_value_container, lv_color_hex(0x00ff00), LV_PART_MAIN);
+lv_obj_set_style_pad_all(lowest_voltage_value_container, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+    
+lv_obj_set_flex_flow(lowest_voltage_value_container, LV_FLEX_FLOW_ROW);
+    
+lv_obj_set_flex_align(lowest_voltage_value_container, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_SPACE_EVENLY);
+// lv_obj_set_flex_grow(lowest_voltage_value_container, 3); 
+
+lowest_voltage_num = lv_label_create(lowest_voltage_value_container);
+
+lv_obj_set_style_text_font(lowest_voltage_num, &lv_font_montserrat_14, 0);
+        
+lv_obj_set_style_text_color(lowest_voltage_num, lv_color_hex(0xFFD700), 0);
+
+lv_label_set_text(lowest_voltage_num, "(0)");   
+
+lv_obj_t *lowest_voltage_dos = lv_label_create(lowest_voltage_value_container);
+
+lv_obj_set_style_text_font(lowest_voltage_dos, &lv_font_montserrat_14, 0);
+    
+lv_obj_set_style_text_color(lowest_voltage_dos, lv_color_hex(0xFF0000), 0);
+
+lv_label_set_text(lowest_voltage_dos, " : ");   
+
+lowest_voltage_value = lv_label_create(lowest_voltage_value_container);
+
+lv_label_set_text(lowest_voltage_value, "0.0V");
+    
+lv_obj_set_style_text_font(lowest_voltage_value, &lv_font_montserrat_14, 0);
+    
+lv_obj_set_style_text_color(lowest_voltage_value, lv_color_hex(0xFFD700), 0);
+        
+// ----------------------------------------------------------------------------------------
+
+ lv_obj_t *diff_voltage_container = lv_obj_create(mid_container);
+
+    
+lv_obj_set_size(diff_voltage_container, 100, 80);
+//设置边框大小为1px，红色   
+lv_obj_set_style_border_width(diff_voltage_container, 1, LV_PART_MAIN);   // 边框宽度=0
+//设置边框颜色为红色
+lv_obj_set_style_border_color(diff_voltage_container, lv_color_hex(0xFF0000), LV_PART_MAIN);
+
+lv_obj_remove_flag(diff_voltage_container, LV_OBJ_FLAG_SCROLLABLE);     
+
+lv_obj_set_flex_flow(diff_voltage_container, LV_FLEX_FLOW_COLUMN);
+    
+lv_obj_set_flex_align(diff_voltage_container, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+        
+lv_obj_t *diff_voltage_label = lv_label_create(diff_voltage_container);
+    
+lv_label_set_text(diff_voltage_label, "Diff Voltage");
+    
+lv_obj_set_style_text_font(diff_voltage_label, &lv_font_montserrat_12, 0);
+ 
+diff_voltage_value = lv_label_create(diff_voltage_container);
+    
+lv_label_set_text(diff_voltage_value, "0.0V");
+    
+lv_obj_set_style_text_font(diff_voltage_value, &lv_font_montserrat_14, 0);
+    
+lv_obj_set_style_text_color(diff_voltage_value, lv_color_hex(0xFF0000), 0);  
+
+
+//--------------------------
+
+ lv_obj_t *avg_voltage_container = lv_obj_create(mid_container);
+
+    
+lv_obj_set_size(avg_voltage_container, 100, 80);
+//设置边框大小为1px，红色   
+lv_obj_set_style_border_width(avg_voltage_container, 1, LV_PART_MAIN);   // 边框宽度=0
+//设置边框颜色为红色
+lv_obj_set_style_border_color(avg_voltage_container, lv_color_hex(0xFF0000), LV_PART_MAIN);
+
+lv_obj_remove_flag(avg_voltage_container, LV_OBJ_FLAG_SCROLLABLE);     
+
+lv_obj_set_flex_flow(avg_voltage_container, LV_FLEX_FLOW_COLUMN);
+    
+lv_obj_set_flex_align(avg_voltage_container, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+        
+lv_obj_t *avg_voltage_label = lv_label_create(avg_voltage_container);
+    
+lv_label_set_text(avg_voltage_label, "Avg Voltage");
+    
+lv_obj_set_style_text_font(avg_voltage_label, &lv_font_montserrat_12, 0);
+ 
+avg_voltage_value = lv_label_create(avg_voltage_container);
+    
+lv_label_set_text(avg_voltage_value, "0.0V");
+    
+lv_obj_set_style_text_font(avg_voltage_value, &lv_font_montserrat_14, 0);
+    
+lv_obj_set_style_text_color(avg_voltage_value, lv_color_hex(0xFF0000), 0);  
+
+
+///-------------------------
 
 
 
