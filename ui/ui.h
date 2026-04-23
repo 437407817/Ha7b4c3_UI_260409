@@ -15,7 +15,8 @@ extern "C" {
 // #include "lv_i18n.h"
 #include "ui_helpers.h"
 #include "ui_events.h"
-
+#include "components/ui_comp.h"
+#include "components/ui_comp_hook.h"
 
 ///////////////////// SCREENS ////////////////////
 

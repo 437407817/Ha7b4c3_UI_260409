@@ -11,7 +11,7 @@
 
 lv_obj_t * ui_S_page02_screen = NULL;
 
-
+lv_obj_t * ui_Home_espresso_header_header1 = NULL;
 
 
 
@@ -45,6 +45,20 @@ void ui_S_page02_screen_init(void) {
     
     // 添加点击事件回调
     lv_obj_add_event_cb(back_btn, back_to_page1_event_cb, LV_EVENT_CLICKED, NULL);
+
+
+    ui_Home_espresso_header_header1 = ui_Container_header_create(ui_S_page02_screen);
+    lv_obj_set_x(ui_Home_espresso_header_header1, 0);
+    lv_obj_set_y(ui_Home_espresso_header_header1, 0);
+
+    lv_obj_add_flag(ui_comp_get_child(ui_Home_espresso_header_header1,
+                                      UI_COMP_CONTAINER_HEADER_CONTAINER_HEADER_PANEL_CONTAINER_LEFT_CONTAINER), LV_OBJ_FLAG_HIDDEN);    /// Flags
+
+    lv_label_set_text(ui_comp_get_child(ui_Home_espresso_header_header1,
+                                        UI_COMP_CONTAINER_HEADER_CONTAINER_HEADER_PANEL_LABEL_TITLE), "Choose your coffee");
+
+
+
 }
 
 
