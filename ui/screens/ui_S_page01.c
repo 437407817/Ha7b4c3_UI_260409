@@ -233,7 +233,7 @@ void ui_S_page01_update_error_values( uint8_t error_flags){
 
 void ui_S_page01_update_initial_setting_values(
     uint8_t auto_flag,uint16_t stop_vol,uint16_t dif_vol,uint16_t alarm_vol){
-        
+        // 根据auto_flag设置ui_auto_checkbox的选中状态
         if (auto_flag != 0) {
             lv_obj_add_state(ui_auto_checkbox, LV_STATE_CHECKED);
             // lv_checkbox_set_text(ui_auto_checkbox, "ON");
@@ -245,8 +245,7 @@ char buffer[20];
 if (ui_input_stop_vol) {
     snprintf(buffer, sizeof(buffer), "%.3f", (float)stop_vol / 1000.0);
     lv_textarea_set_text(ui_input_stop_vol, buffer);
-    // lv_textarea_set_text_fmt(ui_input_stop_vol, "%.3f", (float)stop_vol / 1000.0);
-    // lv_textarea_set_text_fmt(ui_input_stop_vol, "%d.%03d", stop_vol / 1000, stop_vol % 1000);
+    
 }
 if (ui_input_vol_dif) {
     snprintf(buffer, sizeof(buffer), "%.3f", (float)dif_vol / 1000.0);
@@ -921,18 +920,12 @@ lv_obj_set_style_text_color(avg_voltage_value, lv_color_hex(0xFF0000), 0);
     lv_obj_set_flex_flow(btn_container, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(btn_container, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     
-
-
     // 创建第一个按钮
     lv_obj_t *btn1 = lv_button_create(btn_container);
     lv_obj_set_size(btn1, 120, 40);
-    //在按钮上创建一个标签，
-
     lv_obj_t *btn1_label = lv_label_create(btn1);
     lv_label_set_text(btn1_label, "start");
     lv_obj_center(btn1_label);
-    
-
     // 添加点击事件回调
     lv_obj_add_event_cb(btn1, btn1_event_cb, LV_EVENT_CLICKED, NULL);
     
