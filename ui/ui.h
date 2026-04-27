@@ -18,10 +18,15 @@ extern "C" {
 
 
 ///////////////////// SCREENS ////////////////////
-
+#include "screens/status_bar.h"
+#include "components/ui_translate.h"  
 #include "screens/ui_Screen1.h"
 #include "screens/ui_S_page01.h"
 #include "screens/ui_S_page02.h"
+
+
+
+
 #include <stdlib.h>
 #include <stdio.h>
 #include "lvgl_user_inc.h"
