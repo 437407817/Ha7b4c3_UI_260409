@@ -51,6 +51,8 @@ LV_FONT_DECLARE(ui_font_Min);
 LV_FONT_DECLARE(ui_font_P1_bold);
 LV_FONT_DECLARE(ui_font_P1_medium);
 LV_FONT_DECLARE(ui_font_P2_medium);
+//LV_FONT_DECLARE(noto_sans_sc_16);
+//  LV_FONT_DECLARE(lv_font_montserrat_16);
 
 // UI INIT
 void ui_init(void);
